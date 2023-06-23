@@ -9,7 +9,7 @@ import sqlite3
 
 logging.basicConfig(level=logging.DEBUG)
 
-from config import BGS_HOST, FEED_HOSTNAME, FEED_DID, FEED_PUBLISHER_DID, FEEDS
+from config import BGS_HOST, FEED_HOSTNAME, FEED_DID, FEED_PUBLISHER_DID, FEEDS, LISTEN_HOST, LISTEN_PORT
 
 
 async def hello(request: web.Request):
@@ -92,7 +92,7 @@ async def main():
 	LOG_FMT = '%{X-Forwarded-For}i %t (%Tf) "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
 	runner = web.AppRunner(app, access_log_format=LOG_FMT)
 	await runner.setup()
-	site = web.TCPSite(runner, host="localhost", port=65261) # 0xfeed
+	site = web.TCPSite(runner, host=LISTEN_HOST, port=LISTEN_PORT)
 	await site.start()
 
 	#while True:
