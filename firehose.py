@@ -4,6 +4,7 @@ import aiohttp
 import dag_cbor
 import io
 import sqlite3
+import time
 
 class FirehoseClient:
 	def __init__(self, host: str, cur: sqlite3.Cursor) -> None:
@@ -17,6 +18,9 @@ class FirehoseClient:
 
 		cur.execute("INSERT OR IGNORE INTO firehoses (firehose_host, firehose_last_seq) VALUES (?, 0)", (self.host,))
 		cur.connection.commit()
+		self.last_commit = time.time()
+
+		self.cursor = cur.execute("SELECT firehose_last_seq FROM firehoses WHERE firehose_host=?", (self.host,)).fetchone()[0]
 
 		self.cur = cur
 	
@@ -24,8 +28,7 @@ class FirehoseClient:
 	async def record_events(self) -> AsyncGenerator[Tuple[str, str, Optional[dict]], None]:
 		while True:
 			try: # TODO: add watchdog timeout for hung connections?
-				cursor = self.cur.execute("SELECT firehose_last_seq FROM firehoses WHERE firehose_host=?", (self.host,)).fetchone()[0]
-				async with self.client.ws_connect(f"wss://{self.host}/xrpc/com.atproto.sync.subscribeRepos?cursor={cursor}") as ws:
+				async with self.client.ws_connect(f"wss://{self.host}/xrpc/com.atproto.sync.subscribeRepos?cursor={self.cursor}") as ws:
 					while True:
 						msg = io.BytesIO(await ws.receive_bytes())
 						header = dag_cbor.decode(msg, allow_concat=True)
@@ -35,8 +38,11 @@ class FirehoseClient:
 						for op in body.get("ops", []):
 							record = {} # TODO!!!! extract record value from CAR
 							yield op["action"], "at://" + body["repo"] + "/" + op["path"], record
-						self.cur.execute("UPDATE firehoses SET firehose_last_seq=? WHERE firehose_host=?", (body["seq"], self.host))
-						self.cur.connection.commit()
+						self.cursor = body["seq"]
+						if (time.time() - self.last_commit) > 10: # only write updates every 10 seconds, so we don't cause unnecessary disk churn while catching up on backlog
+							self.cur.execute("UPDATE firehoses SET firehose_last_seq=? WHERE firehose_host=?", (self.cursor, self.host))
+							self.cur.connection.commit()
+							self.last_commit = time.time()
 			except aiohttp.WebSocketError: # TODO: include more exception types?
 				print(f"WS error - reconnecting to {self.host} in 10 seconds")
 				asyncio.sleep(10)

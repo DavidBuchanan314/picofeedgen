@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, Tuple
 from feedgen import FeedGenerator
 import sqlite3
+import time
 
 """
 s.repo_put_record("app.bsky.feed.generator", {
@@ -33,10 +34,10 @@ class HumansOnlyFeed(FeedGenerator):
 		)""")
 
 		# we might need to delete all posts from a certain author
-		# TODO: add index
+		self.cur.execute("CREATE INDEX IF NOT EXISTS post_author ON posts (post_author_did)")
 
 		# we'll be using timestamps as a cursor
-		# TODO: add index
+		self.cur.execute("CREATE INDEX IF NOT EXISTS post_time ON posts (post_timestamp_ns)")
 
 		# housekeeping:
 		# ROBOTS may have been updated, delete any previous posts from them
@@ -45,12 +46,39 @@ class HumansOnlyFeed(FeedGenerator):
 		self.con.commit()
 	
 	def get_feed(self, requester_did: str, limit: int, cursor: Optional[str]=None) -> dict:
-		# placeholder static feed that only returns a single post!
-		return {
+		if cursor is None:
+			cursor = 0
+		posts = list(self.cur.execute("""
+			SELECT post_aturi, post_timestamp_ns
+			FROM posts
+			WHERE post_timestamp_ns > ?
+			ORDER BY post_timestamp_ns DESC
+			LIMIT ?""", (int(cursor), limit)).fetchall())
+		res = {
 			"feed": [
-				{"post": "at://did:plc:fzgsygoeg2ydv73mlu76o54x/app.bsky.feed.post/3jytrwyoh5qdy"}
+				{"post": aturi}
+				for aturi, _ in posts
 			]
 		}
+		if posts:
+			res["cursor"] = str(posts[-1][1])
+		return res
 
-	def process_event(self, event) -> None:
-		raise Exception("TODO")
+	def process_event(self, event: Tuple[str, str, Optional[dict]]) -> None:
+		event_type, event_aturi, _ = event
+		event_did, event_collection, _ = event_aturi.removeprefix("at://").split("/")
+		if event_collection != "app.bsky.feed.post": # we only care about posts
+			return
+		if event_did in ROBOTS: # we don't care about robots
+			return
+		
+		if event_type == "create":
+			self.cur.execute("""INSERT OR IGNORE INTO posts (
+				post_aturi,
+				post_author_did,
+				post_timestamp_ns
+			) VALUES (?, ?, ?)""", (event_aturi, event_did, int(time.time()*1000000)))
+		elif event_type == "delete":
+			self.cur.execute("DELETE FROM posts WHERE post_aturi=?", (event_aturi,))
+		
+		self.con.commit()

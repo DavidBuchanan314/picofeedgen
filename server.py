@@ -5,11 +5,13 @@ from aiohttp import web
 import jwt
 from feedgen import FeedGenerator
 from humans_only_feed import HumansOnlyFeed
+from firehose import FirehoseClient
 import logging
 import sqlite3
 
 logging.basicConfig(level=logging.DEBUG)
 
+BGS_HOST = "bgs.bsky-sandbox.dev"
 FEED_HOSTNAME = "feeds.dev.retr0.id"
 FEED_DID = "did:web:" + FEED_HOSTNAME
 FEED_PUBLISHER_DID = "did:plc:fzgsygoeg2ydv73mlu76o54x" # the DID of the user who is publishing the feed
@@ -100,8 +102,15 @@ async def main():
 	site = web.TCPSite(runner, host="localhost", port=65261) # 0xfeed
 	await site.start()
 
-	while True:
-		await asyncio.sleep(3600)  # sleep forever
+	#while True:
+	#	await asyncio.sleep(3600)  # sleep forever
+
+	con = sqlite3.connect("firehose.db")
+	cur = con.cursor()
+	firehose = FirehoseClient(BGS_HOST, cur)
+	async for event in firehose.record_events():
+		for feed in FEEDS.values():
+			feed.process_event(event)
 
 if __name__ == "__main__":
 	asyncio.run(main())

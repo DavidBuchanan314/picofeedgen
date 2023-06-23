@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 
 """
 If you're writing non-trivial feed algorithms, you might want to refactor this
@@ -18,5 +18,5 @@ class FeedGenerator(ABC):
 		pass
 
 	@abstractmethod
-	def process_event(self, event) -> None:
+	def process_event(self, event: Tuple[str, str, Optional[dict]]) -> None:
 		pass
