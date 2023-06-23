@@ -47,11 +47,11 @@ class HumansOnlyFeed(FeedGenerator):
 	
 	def get_feed(self, requester_did: str, limit: int, cursor: Optional[str]=None) -> dict:
 		if cursor is None:
-			cursor = 0
+			cursor = 999999999999999999
 		posts = list(self.cur.execute("""
 			SELECT post_aturi, post_timestamp_ns
 			FROM posts
-			WHERE post_timestamp_ns > ?
+			WHERE post_timestamp_ns < ?
 			ORDER BY post_timestamp_ns DESC
 			LIMIT ?""", (int(cursor), limit)).fetchall())
 		res = {

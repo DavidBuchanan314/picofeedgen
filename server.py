@@ -62,8 +62,8 @@ async def get_feed_skeleton(request: web.Request):
 	if feed_did != FEED_PUBLISHER_DID:
 		return web.HTTPNotFound(text="we don't host any feeds from that publisher")
 	
-	limit = int(request.get("limit", 50))
-	cursor = request.get("cursor")
+	limit = int(request.query.get("limit", 50))
+	cursor = request.query.get("cursor")
 
 	if limit < 1:
 		limit = 1
