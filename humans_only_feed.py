@@ -14,15 +14,9 @@ s.repo_put_record("app.bsky.feed.generator", {
 }, rkey="humans")
 """
 
-# a list of known bot DIDs, to be excluded from the feed
-# if this list was longer, it might make sense to have it be a set()
-ROBOTS = [
-	"did:plc:p64u6mcz2x2qnvrktq4gekja", # load.sandbox.whyr.us (occasional load-test posting bursts)
-	"did:plc:6vouvht32sd5aojpjyxjus2e", # beep.sandbox.whyr.us (one post per second)
-]
-
 class HumansOnlyFeed(FeedGenerator):
-	def __init__(self) -> None:
+	def __init__(self, robots) -> None:
+		self.robots = robots
 		self.con = sqlite3.connect("human_posts.db")
 		self.cur = self.con.cursor()
 
@@ -41,7 +35,7 @@ class HumansOnlyFeed(FeedGenerator):
 
 		# housekeeping:
 		# ROBOTS may have been updated, delete any previous posts from them
-		self.cur.executemany("DELETE FROM posts WHERE post_author_did=?", [(r,) for r in ROBOTS])
+		self.cur.executemany("DELETE FROM posts WHERE post_author_did=?", [(r,) for r in self.robots])
 
 		self.con.commit()
 	
@@ -69,7 +63,7 @@ class HumansOnlyFeed(FeedGenerator):
 		event_did, event_collection, _ = event_aturi.removeprefix("at://").split("/")
 		if event_collection != "app.bsky.feed.post": # we only care about posts
 			return
-		if event_did in ROBOTS: # we don't care about robots
+		if event_did in self.robots: # we don't care about robots
 			return
 		
 		if event_type == "create":

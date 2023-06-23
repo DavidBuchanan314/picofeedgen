@@ -3,21 +3,14 @@ import asyncio
 import aiohttp_cors
 from aiohttp import web
 import jwt
-from feedgen import FeedGenerator
-from humans_only_feed import HumansOnlyFeed
 from firehose import FirehoseClient
 import logging
 import sqlite3
 
 logging.basicConfig(level=logging.DEBUG)
 
-BGS_HOST = "bgs.bsky-sandbox.dev"
-FEED_HOSTNAME = "feeds.dev.retr0.id"
-FEED_DID = "did:web:" + FEED_HOSTNAME
-FEED_PUBLISHER_DID = "did:plc:fzgsygoeg2ydv73mlu76o54x" # the DID of the user who is publishing the feed
-FEEDS: Dict[str, FeedGenerator] = {
-	"humans": HumansOnlyFeed()
-}
+from config import BGS_HOST, FEED_HOSTNAME, FEED_DID, FEED_PUBLISHER_DID, FEEDS
+
 
 async def hello(request: web.Request):
 	return web.Response(text="Hello! This is an ATProto feed generator, running on https://github.com/DavidBuchanan314/picofeedgen")
