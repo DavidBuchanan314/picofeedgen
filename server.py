@@ -6,6 +6,7 @@ import jwt
 from firehose import FirehoseClient
 import logging
 import sqlite3
+import aiohttp
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -100,10 +101,12 @@ async def main():
 
 	con = sqlite3.connect("firehose.db")
 	cur = con.cursor()
-	firehose = FirehoseClient(BGS_HOST, cur)
-	async for event in firehose.record_events():
-		for feed in FEEDS.values():
-			feed.process_event(event)
+	async with aiohttp.ClientSession() as webclient:
+		firehose = FirehoseClient(BGS_HOST, cur, webclient)
+		async for event in firehose.listen_for_record_events():
+			for feed in FEEDS.values():
+				feed.process_event(event)
+				await asyncio.sleep(0) # yield to scheduler
 
 if __name__ == "__main__":
 	asyncio.run(main())
