@@ -68,7 +68,7 @@ class FirehoseClient:
 				RECONNECT_DELAY_SECS = 10  # TODO: exponential backoff?
 				traceback.print_exc()
 				print(f"WS error - reconnecting to {self.host} in {RECONNECT_DELAY_SECS} seconds")
-				asyncio.sleep(RECONNECT_DELAY_SECS)
+				await asyncio.sleep(RECONNECT_DELAY_SECS)
 
 if __name__ == "__main__":
 	async def main():
