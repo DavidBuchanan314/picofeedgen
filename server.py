@@ -105,7 +105,7 @@ async def main():
 		firehose = FirehoseClient(BGS_HOST, cur, webclient)
 		async for event in firehose.listen_for_record_events():
 			for feed in FEEDS.values():
-				feed.process_event(event)
+				feed.process_event(event) # TODO: catch errors in here!
 				await asyncio.sleep(0) # yield to scheduler
 
 if __name__ == "__main__":
