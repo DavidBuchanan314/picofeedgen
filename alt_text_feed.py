@@ -69,4 +69,7 @@ class AltTextFeed(FeedGenerator):
 			post_aturi,
 			post_timestamp_ns
 		) VALUES (?, ?)""", (event_aturi, int(time.time()*1000000)))
+
+		# housekeeping: delete old posts
+		self.cur.execute("DELETE FROM posts WHERE post_timestamp_ns<?", ((time.time()-24*60*60)*1_000_000,))
 		self.con.commit()
