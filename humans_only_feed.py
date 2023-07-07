@@ -18,6 +18,7 @@ class HumansOnlyFeed(FeedGenerator):
 	def __init__(self, robots) -> None:
 		self.robots = robots
 		self.con = sqlite3.connect("human_posts.db")
+		self.con.execute("pragma journal_mode=wal")
 		self.cur = self.con.cursor()
 
 		# we don't bother indexing the content of posts, only when and by whom
