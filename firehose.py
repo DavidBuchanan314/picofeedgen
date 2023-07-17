@@ -34,7 +34,7 @@ class FirehoseClient:
 
 	# wrapped by record_events() to provide graceful error recovery
 	async def _record_events_raw(self) -> AsyncGenerator[Tuple[str, str, Optional[dict]], None]:
-		async with self.client.ws_connect(f"wss://{self.host}/xrpc/com.atproto.sync.subscribeRepos?cursor={self.cursor}") as ws:
+		async with self.client.ws_connect(f"wss://{self.host}/xrpc/com.atproto.sync.subscribeRepos?cursor={self.cursor}", timeout=15) as ws:
 			while True:
 				msg = io.BytesIO(await ws.receive_bytes())
 				header = dag_cbor.decode(msg, allow_concat=True)
